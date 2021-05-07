@@ -17,6 +17,7 @@ contract NV_DAO is Ownable {
     mapping(address => bool) tokenUsed;
   }
 
+  uint256 public minInvestmentUSDT;
   Portfolio[] private portfolios;
   
   modifier onlyExistingPortfolio(uint8 _id) {
@@ -24,6 +25,15 @@ contract NV_DAO is Ownable {
       _;
   }
 
+
+  /**
+   * @notice IMPORTANT: no validation for 0.
+   * @dev Updates min investment in USDT.
+   * @param _amount Amount to be set for min investment in USDT.
+   */
+  function updateMinInvestmentUSDT(uint256 _amount) external onlyOwner {
+    minInvestmentUSDT = _amount;
+  }
 
   /**
    * @dev Creates portfolio and adde to portfolios array.
@@ -52,9 +62,25 @@ contract NV_DAO is Ownable {
     }
   }
 
+  /**
+   * @dev Gets portfoilio details.
+   * @param _id Portfolio id.
+   * @return _riskType Portfolio risk type.
+   * @return _name Portfolio name.
+   * @return _tokens Tokens used for Portfolio trading.
+   */
   function portfolioInfo(uint8 _id) external view onlyExistingPortfolio(_id) returns (uint8 _riskType, string memory _name, address[] memory _tokens) {
     _riskType = uint8(portfolios[_id].riskType);
     _name = portfolios[_id].name;
     _tokens = portfolios[_id].tokens;
+  }
+
+  /**
+   * @dev Invests into portfolio.
+   * @param _id Portfolio id.
+   * @param _amount Investment amount in USDT.
+   */
+  function invest(uint8 _id, uint256 _amount) external onlyExistingPortfolio(_id) {
+    require(_amount > minInvestmentUSDT, "Wrong _amount");
   }
 }
