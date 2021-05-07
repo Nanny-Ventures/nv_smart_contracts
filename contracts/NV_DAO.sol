@@ -2,6 +2,8 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./USDn.sol";
+import "./DAOn.sol";
 
 contract NV_DAO is Ownable {
   enum PortfolioRiskType {
@@ -17,14 +19,26 @@ contract NV_DAO is Ownable {
     mapping(address => bool) tokenUsed;
   }
 
+  address public escrowUSDT;
   uint256 public minInvestmentUSDT;
   Portfolio[] private portfolios;
+  
   
   modifier onlyExistingPortfolio(uint8 _id) {
       require(_id < portfolios.length, "Wrong portfolio id");
       _;
   }
 
+
+  /**
+   * @dev Constructs Smart Contract.
+   * @param _escrowUSDT Escrow used for USDT storage.
+   */
+  constructor(address _escrowUSDT) {
+    require(_escrowUSDT != address(0), "Wrong escrowUSDT");
+
+    escrowUSDT = _escrowUSDT;
+  }
 
   /**
    * @notice IMPORTANT: no validation for 0.
