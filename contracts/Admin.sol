@@ -8,8 +8,6 @@ import "./Trader.sol";
 import "./FeeManager.sol";
 
 contract Admin is Ownable, Pausable {
-  bool public freeWithdrawAllowed;
-
   address public feeManager;
 
   address[] traderContracts;
@@ -18,10 +16,11 @@ contract Admin is Ownable, Pausable {
 
 
   event Enrolled(address _investor, address trader);
+  event Unenrolled(address _investor, address trader);
   
 
   constructor(address _feeManager) {
-      feeManager = _feeManager;
+    feeManager = _feeManager;
   }
 
   
@@ -31,20 +30,12 @@ contract Admin is Ownable, Pausable {
   function enroll() external whenNotPaused() {
     require(traderContractForInvestor[msg.sender] == address(0), "Investor enrolled");
     
-    address trader = address(new Trader(msg.sender, owner(), feeManager));
-    traderContractForInvestor[msg.sender] = trader;
-    traderContractIdx[trader] = traderContracts.length;
-    traderContracts.push(trader);
+    address traderContract = address(new Trader(msg.sender, owner(), feeManager));
+    traderContractForInvestor[msg.sender] = traderContract;
+    traderContractIdx[traderContract] = traderContracts.length;
+    traderContracts.push(traderContract);
 
-    emit Enrolled(msg.sender, trader);
-  }
-
-  /**
-   * @dev Allows or disallows commission free withdraw.
-   * @param _allowed Alowed or not.
-   */
-  function updateFreeWithdrawAllowed(bool _allowed) external onlyOwner {
-    freeWithdrawAllowed = _allowed;
+    emit Enrolled(msg.sender, traderContract);
   }
 
   /**
@@ -53,27 +44,33 @@ contract Admin is Ownable, Pausable {
    * @param _assetTo Asset address to be exchanged to.
    * @param _investorTo Address, that should receive ongoing profit after all fees.
    */
-  function deleteInvestor(address _router, address _assetTo, address _investorTo) external {
-    address trader = traderContractForInvestor[msg.sender];
-    require(trader != address(0), "Investor not enrolled");
+  function unenroll(address _router, address _assetTo, address _investorTo) external {
+    address traderContract = traderContractForInvestor[msg.sender];
+    require(traderContract != address(0), "Investor not enrolled");
 
     delete traderContractForInvestor[msg.sender];
 
     //  TODO: invetorsSC.deleteInvestor(_routerUniAddr, _assetTo, _investorTo);
 
-    uint256 idxToDelete = traderContractIdx[trader];
+    uint256 idxToDelete = traderContractIdx[traderContract];
 
     if (idxToDelete == traderContracts.length - 1) {
       traderContracts.pop();
-      delete traderContractIdx[trader];
+      delete traderContractIdx[traderContract];
     } else {
       address lastTrader = traderContracts[traderContracts.length - 1];
       traderContracts.pop();
       traderContractIdx[lastTrader] = idxToDelete;
       traderContracts[idxToDelete] = lastTrader;
     }
+
+    emit Unenrolled(msg.sender, traderContract);
   }
 
+  /**
+   * @dev Updates FeeManager address.
+   * @param _feeManager FeeManager address.
+   */
   function updateFeeManager(address _feeManager) external onlyOwner {
     require(_feeManager != address(0), "Wrong feeManager");
 

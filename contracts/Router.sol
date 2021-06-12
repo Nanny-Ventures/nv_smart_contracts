@@ -9,7 +9,6 @@ contract Router is Ownable {
   uint8 public slippage;
   address public contractAddress;
 
-  uint256 constant MAX_INT = (2**256) - 1;
 
   /**
     * @dev Creates the Smart Contract.
@@ -37,5 +36,15 @@ contract Router is Ownable {
     //  TODO:
     // contractAddress.swap(_assetFrom, _assetFromAmount, _assetTo, slippage, etc);
     // _assetFrom.transfer(msg.sender, _assetFrom.balance(this));
+  }
+
+  /**
+   * @dev Updates max allowed slippage value.
+   * @param _slippage Slippage to be used.
+   */
+  function updateSlippage(uint8 _slippage) external onlyOwner {
+    require(_slippage > 0, "Wrong slippage");
+    
+    slippage = _slippage;
   }
 }
