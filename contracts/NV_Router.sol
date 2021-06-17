@@ -1,29 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.5;
 
-// import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract NV_Router {
-  string public name;
-  address public contractAddress;
-
-
-  // /**
-  //   * @dev Creates the Smart Contract.
-  //   * @param _name Name of the DEX to be used.
-  //   * @param _slippage Slippage to be used.
-  //   * @param _contractAddress DEX address to be used.
-  //  */
-  // constructor(string memory _name, uint8 _slippage, address _contractAddress) {
-  //   require(bytes(_name).length > 0, "Wrong name");
-  //   require(_slippage > 0, "Wrong slippage");
-  //   require(_contractAddress != address(0), "Wrong _contractAddress");
-
-  //   name = _name;
-  //   slippage = _slippage;
-  //   contractAddress = _contractAddress;
-  // }
+  string public constant name = "";
+  address public constant dexAddress = address(0);
 
   /**
    * @dev Processes trade.
@@ -32,19 +14,9 @@ contract NV_Router {
    * @param _assetTo Asset to be exchanged to.
    * @param _slippage Slippage value.
    */
-  function trade(address _assetFrom, uint256 _assetFromAmount, address _assetTo, uint256 _slippage) external {
+  function trade(address _assetFrom, uint256 _assetFromAmount, address _assetTo, uint8 _slippage) external {
     //  TODO:
-    // contractAddress.swap(_assetFrom, _assetFromAmount, _assetTo, slippage, etc);
+    // dexAddress.swap(_assetFrom, _assetFromAmount, _assetTo, slippage, etc);
     // _assetFrom.transfer(msg.sender, _assetFrom.balance(this));
   }
-
-  // /**
-  //  * @dev Updates max allowed slippage value.
-  //  * @param _slippage Slippage to be used.
-  //  */
-  // function updateSlippage(uint8 _slippage) external onlyOwner {
-  //   require(_slippage > 0, "Wrong slippage");
-    
-  //   slippage = _slippage;
-  // }
 }

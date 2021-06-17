@@ -10,35 +10,30 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 contract NV_Portfolio is Ownable {
   uint256 constant MAX_INT = (2**256) - 1;
 
-  uint8 public portfolioType;
+  uint8 public riskTolerance; //  low, mid, high
   address public admin;
-  uint256 public nftId;
 
-  address[] assetsOwned;
-  mapping (address => uint256) assetIdx;
+  address[] public assetsOwned;
+  mapping (address => uint256) private assetIdx;
 
 
   event Trade(address indexed _assetFrom, uint256 _assetFromAmount, address indexed _assetTo, address indexed _routerUniAddr);
 
 
-  modifier onlyTrader() {
-    require(NV_Admin(admin).isTrader(msg.sender), "Not trader");
-    _;
-  }
-
-  modifier onlyInvestor() {
-    require(IERC721(owner()).ownerOf(nftId) == msg.sender, "Not portfolio owner");
-    _;
-  }
-
-
-  constructor(uint8 _type, address _admin, uint256 _nftId) {
-    require(_type < 3, "Wrong type");
+  constructor(uint8 _riskTolerance, address _admin) {
+    require(_riskTolerance < 3, "Wrong type");
     require(_admin != address(0), "Wrong admin");
     
-    portfolioType = _type;
+    riskTolerance = _riskTolerance;
     admin = _admin;
-    nftId = _nftId;
+  }
+
+  /**
+   * @dev Gets all assets owned by portfolio.
+   * @return All assets owned by portfolio.
+   */
+  function getAssetsOwned() external view returns(address[] memory) {
+    return assetsOwned;
   }
 
   /**
@@ -49,14 +44,15 @@ contract NV_Portfolio is Ownable {
    * @param _router Router address.
    * @param _slippage Slippage value.
    */
-  function tradeAmount(address _assetFrom, uint256 _assetFromAmount, address _assetTo, address _router, uint256 _slippage) public onlyTrader {
-    require(_assetFrom != address(0), "Wrong _assetFrom");
+  function tradeAmount(uint8 _slippage, address _assetFrom, uint256 _assetFromAmount, address _assetTo, address _router) public {
+    require(NV_Admin(admin).isTrader(msg.sender), "Not trader");
+    require(_assetFromAmount > 0, "Wrong _assetFromAmount");
     require(_assetTo != address(0), "Wrong _assetTo");
     require(_router != address(0), "Wrong _router");
+    require(NV_Admin(admin).isStableAllowed(_assetFrom) || NV_Admin(admin).isStableAllowed(_assetTo), "No stable");
 
     uint256 _assetFromBalance = IERC20(_assetFrom).balanceOf(address(this));
-    require(_assetFromBalance > 0, "_assetFrom not owned");
-    require(_assetFromAmount <= _assetFromBalance, "Wrong _assetFromAmount");
+    require(_assetFromBalance >= _assetFromAmount, "_assetFrom not owned");
 
     if (IERC20(_assetFrom).allowance(address(this), _router) == 0) {
       IERC20(_assetFrom).approve(_router, MAX_INT);
@@ -83,11 +79,11 @@ contract NV_Portfolio is Ownable {
    * @param _router Router address.
    * @param _slippage Slippage value.
    */
-  function tradePercentage(address _assetFrom, uint8 _assetFromPercentage, address _assetTo, address _router, uint256 _slippage) external onlyTrader {
+  function tradePercentage(uint8 _slippage, address _assetFrom, uint8 _assetFromPercentage, address _assetTo, address _router) external {
     uint256 _assetFromBalance = IERC20(_assetFrom).balanceOf(address(this));
     require(_assetFromBalance > 0, "_assetFrom not owned");
 
-    tradeAmount(_assetFrom, (_assetFromBalance * 100) / _assetFromPercentage, _assetTo, _router, _slippage);
+    tradeAmount(_slippage, _assetFrom, (_assetFromBalance * 100) / _assetFromPercentage, _assetTo, _router);
   }
 
   /**
@@ -96,12 +92,14 @@ contract NV_Portfolio is Ownable {
    * @param _router Router address.
    * @param _slippage Slippage value.
    */
-  function sellAllAssets(address _assetTo, address _router, uint256 _slippage) external onlyTrader {
+  function sellAllAssets(uint8 _slippage, address _assetTo, address _router) external {
+    require(msg.sender == admin || NV_Admin(admin).isTrader(msg.sender), "Not allowed");
+
     uint256 assetsLength = assetsOwned.length;
 
     for (uint256 i = 0; i < assetsLength; i ++) {
       uint256 _assetFromBalance = IERC20(assetsOwned[i]).balanceOf(address(this));
-      tradeAmount(assetsOwned[i], _assetFromBalance, _assetTo, _router, _slippage);
+      tradeAmount(_slippage, assetsOwned[i], _assetFromBalance, _assetTo, _router);
     }
   }
 
@@ -111,7 +109,7 @@ contract NV_Portfolio is Ownable {
    * @param _stableAsset Asset (stable coin) to be used for profit withdrawal.
    * @param _addressTo Address profit should be sent to. msg.sender will used if 0x0.
    */
-  function withdrawProfit(uint8 _percentageToWithdraw, address _stableAsset, address _addressTo) external onlyInvestor {
+  function withdrawProfit(uint8 _percentageToWithdraw, address _stableAsset, address _addressTo) external {
     // require(tradablePeriodFinished, “No allowed“);
     // require(trader != investor, “Deleted acc”);
     // require(feeManager.isAssetAllowed(_baseCurrency), “Wrong base token”)
@@ -120,36 +118,6 @@ contract NV_Portfolio is Ownable {
     // 1. calculate fees;
     // 2. transfer fee to feeManager;
     // 3. transfer profit to _addressTo;
-  }
-
-  /**
-   * @dev Sells all assets owned and deletes portfolio.
-   * @param _router Router address.
-   * @param _stableAsset Asset (stable coin) to be used for profit withdrawal.
-   * @param _addressTo Address profit should be sent to. msg.sender will used if 0x0.
-   */
-  function deletePortfolio(address _router, address _stableAsset, address _addressTo) external onlyInvestor {
-    // require(feeManager.allowedAssets[_assetTo], “Wrong _assetTo”);
-
-    // forEach(assetsOwned -> assetFrom) {
-    // 	uint256 balance = assetFrom.balance(address(this));
-    // 	this,trade(assetFrom, balance, _assetTo);
-    // }
-
-    // TODO: calculate profit only. Now wrong.
-    // forEach(feeManager.allowedAssets -> asset) {
-    // 	uint256 balanceAsset = asset.balance(address(this));
-    // 	uint256 feeAmount = balanceAsset * fee;
-    // 	asset.transfer(feeManager, feeAmount);
-    // 	asset.transfer(_investorTo, balanceDiff - feeAmount);
-    // }
-
-    // delete trader;
-    // delete feeManager;
-
-    // emit InvestorDeleted(investor, feeAsset[], feeAmount[]);
-
-    // selfdestroy();
   }
 
 
