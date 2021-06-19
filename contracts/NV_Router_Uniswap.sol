@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.5;
 
+import "./NV_IRouter.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract NV_Router {
-  string public constant name = "";
+contract NV_Router_Uniswap is NV_IRouter {
+  string public constant name = "Uniswap";
   address public constant dexAddress = address(0);
 
   /**
@@ -14,7 +15,7 @@ contract NV_Router {
    * @param _assetTo Asset to be exchanged to.
    * @param _slippage Slippage value.
    */
-  function trade(address _assetFrom, uint256 _assetFromAmount, address _assetTo, uint8 _slippage) external {
+  function trade(address _assetFrom, uint256 _assetFromAmount, address _assetTo, uint8 _slippage) external override {
     //  TODO:
     // dexAddress.swap(_assetFrom, _assetFromAmount, _assetTo, slippage, etc);
     // _assetFrom.transfer(msg.sender, _assetFrom.balance(this));
