@@ -138,7 +138,7 @@ contract NV_Portfolio is Ownable {
     uint256 balanceTotal = IERC20(_assetTo).balanceOf(address(this));
     uint256 feeAmount = balanceTotal * feePercentage;
 
-    require(IERC20(_assetTo).transfer(NV_Admin(admin).devFeeDistributionManager(), balanceTotal - feeAmount), "Transfer to investor failed");
+    require(IERC20(_assetTo).transfer(NV_Admin(admin).devFeeDistributionManager(), feeAmount), "Transfer to dev failed");
     require(IERC20(_assetTo).transfer(_addressTo, balanceTotal - feeAmount), "Transfer to investor failed");
   }
 
@@ -181,5 +181,4 @@ contract NV_Portfolio is Ownable {
       assetsOwned.pop();
     }
   }
-  
 }
