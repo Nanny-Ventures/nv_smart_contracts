@@ -20,8 +20,13 @@ contract NV_Portfolio is NV_IPortfolio {
   event Trade(address indexed _assetFrom, uint256 _assetFromAmount, address indexed _assetTo, address indexed _routerUniAddr);
 
 
+  /**
+   * @dev Constructor.
+   * @param _riskTolerance _riskTolerance value.
+   * @param _admin _admin Smart Contract address.
+   */
   constructor(uint8 _riskTolerance, address _admin) {
-    require(_riskTolerance < 3, "Wrong type");
+    require(_riskTolerance < 3, "Wrong risk");
     require(_admin != address(0), "Wrong admin");
     
     riskTolerance = _riskTolerance;

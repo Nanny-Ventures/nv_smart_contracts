@@ -13,9 +13,12 @@ contract NV_Admin is NV_FeeManager, NV_PortfolioManager {
   event TraderUpdated(bool _make, address _trader);
 
 
-  constructor(address _devFeeDistributionManager, address _portfolioFactory) {
+  /**
+   * @dev Constructor.
+   * @param _devFeeDistributionManager _devFeeDistributionManager Smart Contract address.
+   */
+  constructor(address _devFeeDistributionManager) {
     devFeeDistributionManager = _devFeeDistributionManager;
-    portfolioFactory = _portfolioFactory;
   }
 
   /**

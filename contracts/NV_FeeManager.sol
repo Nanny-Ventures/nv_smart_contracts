@@ -12,6 +12,9 @@ contract NV_FeeManager is Ownable {
   event FreeWithdrawalAllowed(bool _allowed);
 
 
+  /**
+   * @dev Constructor.
+   */
   constructor () {
     requestDuration = 10 days;
   }
