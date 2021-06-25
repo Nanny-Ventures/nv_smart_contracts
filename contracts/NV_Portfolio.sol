@@ -3,10 +3,9 @@ pragma solidity 0.8.6;
 
 import "./NV_Admin.sol";
 import "./NV_IRouter.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract NV_Portfolio is Ownable {
+contract NV_Portfolio {
   uint256 constant MAX_INT = (2**256) - 1;
 
   uint8 public riskTolerance; //  low, mid, high
