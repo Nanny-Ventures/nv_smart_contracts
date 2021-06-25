@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.5;
+pragma solidity 0.8.6;
 
 import "./NV_Portfolio.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -8,23 +8,23 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 
 contract NV_PortfolioManager is Ownable, Pausable {
   address[] public stablesAllowed;
-
   address[] public activePortfolios;
   address[] public inactivePortfolios;
 
   mapping(address => bool) public isStableAllowed;
   mapping(address => uint256) private indexOfActivePortfolio;
-  mapping(address => address[]) public portfoliosOfInvestor;
+  mapping(address => address[]) public portfoliosOfInvestor;  //  all created portfolios currently owning
   mapping(address => address) public investorOfPortfolio;
   mapping(address => bool) public isInvestorForbidden;
 
-
-  event StableAllowed(bool _allowed, address _stable);
+  event StableAllowed(bool allowed, address stable);
   event PortfolioCreated(uint8 portfolioType, address portfolio, address investor);
   event PortfolioDeleted(address portfolio, address investor);
+  event PortfolioTransferred(address from, address to);
 
 
   /**
+   * @notice removed stablecoin balance in portfolio will be locked.
    * @dev Updates stable coin as allowed.
    * @param _allowed Whether allow or not.
    * @param _stable Stable coin address.
@@ -116,11 +116,12 @@ contract NV_PortfolioManager is Ownable, Pausable {
   }
 
   /**
+   * @notice Should be called by investor directly.
    * @dev Creates portfolio for investor.
    * @param _riskTolerance Risk tolerance of the portfolio.
    */
   function createPortfolio(uint8 _riskTolerance) external whenNotPaused {
-    require(!isInvestorForbidden[msg.sender], "Forbidden");
+    require(!isInvestorForbidden[msg.sender], "Investor forbidden");
     
     address portfolioAddr = address(new NV_Portfolio(_riskTolerance, address(this)));
 
@@ -133,6 +134,34 @@ contract NV_PortfolioManager is Ownable, Pausable {
   }
 
   /**
+   * @dev Transfers portfolio ownership between investors.
+   * @param _portfolio Portfolio address.
+   * @param _to Transfer to address.
+   */
+  function transferPortfolio(address _portfolio, address _to) external whenNotPaused {
+    uint256 idx = indexOfActivePortfolio[_portfolio];
+    require(activePortfolios[idx] == _portfolio, "Wrong portfolio");
+    require(investorOfPortfolio[_portfolio] == msg.sender, "Not investor");
+    require(!isInvestorForbidden[_to], "Investor forbidden");
+
+    portfoliosOfInvestor[_to].push(_portfolio);
+    investorOfPortfolio[_portfolio] = _to;
+
+    uint256 portfoliosAmount = portfoliosOfInvestor[msg.sender].length;
+    for (uint256 i = 0; i < portfoliosAmount; i++) {
+      if (portfoliosOfInvestor[msg.sender][i] == _portfolio) {
+        if (i < (portfoliosAmount - 1)) {
+          portfoliosOfInvestor[msg.sender][i] = portfoliosOfInvestor[msg.sender][portfoliosAmount - 1];
+        }
+        portfoliosOfInvestor[msg.sender].pop();
+      }
+    }
+
+    emit PortfolioTransferred(msg.sender, _to);
+  }
+
+  /**
+   * @notice Should be called by investor directly.
    * @dev Sells all assets owned and deletes portfolio.
    * @param _router Router address.
    * @param _assetTo Asset (stable coin) to be used for balance withdrawal.
@@ -152,15 +181,13 @@ contract NV_PortfolioManager is Ownable, Pausable {
 
     inactivePortfolios.push(_portfolio);
 
-    if (idxToDelete == activePortfolios.length - 1) {
-      activePortfolios.pop();
-      delete indexOfActivePortfolio[_portfolio];
-    } else {
+    if (idxToDelete < activePortfolios.length - 1) {
       address lastPortfolio = activePortfolios[activePortfolios.length - 1];
       indexOfActivePortfolio[lastPortfolio] = idxToDelete;
       activePortfolios[idxToDelete] = lastPortfolio;
-      activePortfolios.pop();
     }
+    delete indexOfActivePortfolio[_portfolio];
+    activePortfolios.pop();
 
     emit PortfolioDeleted(_portfolio, msg.sender);
   }

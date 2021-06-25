@@ -1,29 +1,43 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.5;
+pragma solidity 0.8.6;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract NV_FeeManager is Ownable {
-  uint8 public withdrawalFeePercentage; //  success fee
-  uint8 public withdrawalFeePercentageUrgent; //  withdrawal when not in withdrawal period
+  uint8 public successFeePercentage;
+  uint8 public urgentFeePercentage;
 
+  uint256 public requestDuration;
 
   event FreeWithdrawalAllowed(bool _allowed);
 
 
+  constructor () {
+    requestDuration = 10 days;
+  }
+
+
   /**
-   * @dev Updates withdrawalFeePercentage.
+   * @dev Updates successFeePercentage.
    * @param _feePercentage Percentage to use.
    */
-  function updateWithdrawalFeePercentage(uint8 _feePercentage) external onlyOwner {
-    withdrawalFeePercentage = _feePercentage;
+  function updateSuccessFeePercentage(uint8 _feePercentage) external onlyOwner {
+    successFeePercentage = _feePercentage;
   }
 
   /**
-   * @dev Updates withdrawalFeePercentageUrgent.
+   * @dev Updates urgentFeePercentage.
    * @param _feePercentage Percentage to use.
    */
-  function updateWithdrawalFeePercentageUrgent(uint8 _feePercentage) external onlyOwner {
-    withdrawalFeePercentageUrgent = _feePercentage;
+  function updateUrgentFeePercentage(uint8 _feePercentage) external onlyOwner {
+    urgentFeePercentage = _feePercentage;
+  }
+
+  /**
+   * @dev Updates requestDuration.
+   * @param _requestDuration Duration.
+   */
+  function updateRequestDuration(uint256 _requestDuration) external onlyOwner {
+    requestDuration = _requestDuration;
   }
 }

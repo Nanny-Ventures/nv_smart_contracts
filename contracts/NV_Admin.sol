@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.5;
+pragma solidity 0.8.6;
 
 import "./NV_FeeManager.sol";
 import "./NV_PortfolioManager.sol";
 
 
-contract NV_Admin is NV_PortfolioManager, NV_FeeManager {
+contract NV_Admin is NV_FeeManager, NV_PortfolioManager {
   address public devFeeDistributionManager;
 
   mapping(address => bool) public isTrader;
-  
-  
+
   event TraderUpdated(bool _make, address _trader);
 
 
