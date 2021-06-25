@@ -13,8 +13,9 @@ contract NV_Admin is NV_FeeManager, NV_PortfolioManager {
   event TraderUpdated(bool _make, address _trader);
 
 
-  constructor(address _devFeeDistributionManager) {
+  constructor(address _devFeeDistributionManager, address _portfolioFactory) {
     devFeeDistributionManager = _devFeeDistributionManager;
+    portfolioFactory = _portfolioFactory;
   }
 
   /**
@@ -34,5 +35,14 @@ contract NV_Admin is NV_FeeManager, NV_PortfolioManager {
   function updateDevFeeDistributionManager(address _addr) external onlyOwner {
     require(_addr != address(0), "Wrong addr");
     devFeeDistributionManager = _addr;
+  }
+
+  /**
+   * @dev Updates portfolioFactory.
+   * @param _addr Address to be set.
+   */
+  function updatePortfolioFactory(address _addr) external onlyOwner {
+    require(_addr != address(0), "Wrong addr");
+    portfolioFactory = _addr;
   }
 }

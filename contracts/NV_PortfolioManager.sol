@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.6;
 
-import "./NV_Portfolio.sol";
+import "./interfaces/NV_IPortfolio.sol";
+import "./interfaces/NV_IPortfolioFactory.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
 
 contract NV_PortfolioManager is Ownable, Pausable {
+  address internal portfolioFactory;
+
   address[] public stablesAllowed;
   address[] public activePortfolios;
   address[] public inactivePortfolios;
@@ -123,7 +126,7 @@ contract NV_PortfolioManager is Ownable, Pausable {
   function createPortfolio(uint8 _riskTolerance) external whenNotPaused {
     require(!isInvestorForbidden[msg.sender], "Investor forbidden");
     
-    address portfolioAddr = address(new NV_Portfolio(_riskTolerance, address(this)));
+    address portfolioAddr = NV_IPortfolioFactory(portfolioFactory).createPortfolio(_riskTolerance);
 
     indexOfActivePortfolio[portfolioAddr] = activePortfolios.length;
     activePortfolios.push(portfolioAddr);
@@ -172,11 +175,11 @@ contract NV_PortfolioManager is Ownable, Pausable {
     require(activePortfolios[idxToDelete] == _portfolio, "Wrong portfolio");
     require(investorOfPortfolio[_portfolio] == msg.sender, "Not investor");
 
-    NV_Portfolio(_portfolio).sellAllAssets(_slippage, _assetTo, _router);
+    NV_IPortfolio(_portfolio).sellAllAssets(_slippage, _assetTo, _router);
 
     uint8 stablesAllowedLength = uint8(stablesAllowed.length);
     for (uint8 i = 0; i < stablesAllowedLength; i++) {
-      NV_Portfolio(_portfolio).withdrawBalance(100, stablesAllowed[i], _addressTo);
+      NV_IPortfolio(_portfolio).withdrawBalance(100, stablesAllowed[i], _addressTo);
     }
 
     inactivePortfolios.push(_portfolio);

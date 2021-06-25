@@ -2,10 +2,11 @@
 pragma solidity 0.8.6;
 
 import "./NV_Admin.sol";
-import "./NV_IRouter.sol";
+import "./interfaces/NV_IRouter.sol";
+import "./interfaces/NV_IPortfolio.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract NV_Portfolio {
+contract NV_Portfolio is NV_IPortfolio {
   uint256 constant MAX_INT = (2**256) - 1;
 
   uint8 public riskTolerance; //  low, mid, high
@@ -92,7 +93,7 @@ contract NV_Portfolio {
    * @param _router Router address.
    * @param _slippage Slippage value.
    */
-  function sellAllAssets(uint8 _slippage, address _assetTo, address _router) external {
+  function sellAllAssets(uint8 _slippage, address _assetTo, address _router) external override {
     require(msg.sender == admin || NV_Admin(admin).isTrader(msg.sender), "Not allowed");
 
     uint256 assetsLength = assetsOwned.length;
@@ -125,7 +126,7 @@ contract NV_Portfolio {
    * @param _assetTo Asset (stable coin) to be used for balance withdrawal.
    * @param _addressTo Receiver address. msg.sender will used if 0x0.
    */
-  function withdrawBalance(uint8 _percentageToWithdraw, address _assetTo, address _addressTo) external {
+  function withdrawBalance(uint8 _percentageToWithdraw, address _assetTo, address _addressTo) external override {
     require(_percentageToWithdraw > 0, "Wrong percentage");
     require(NV_Admin(admin).isStableAllowed(_assetTo), "Wrong stable");
     require(_addressTo != address(0), "Wrong addressTo");
