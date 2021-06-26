@@ -8,6 +8,7 @@ interface NV_IRouter {
    * @param _assetFrom Asset to be exchanged from.
    * @param _assetFromAmount AssetFrom amount to be traded.
    * @param _assetTo Asset to be exchanged to.
+   * @return Amount of _assetTo.
    */
-  function trade(uint8 _slippage, address _assetFrom, uint256 _assetFromAmount, address _assetTo) external;
+  function trade(uint8 _slippage, address _assetFrom, uint256 _assetFromAmount, address _assetTo) external returns(uint256);
 }

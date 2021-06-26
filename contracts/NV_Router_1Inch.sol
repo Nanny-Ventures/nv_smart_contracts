@@ -15,7 +15,7 @@ contract NV_Router_1Inch is NV_IRouter {
    * @param _assetFromAmount AssetFrom amount to be traded.
    * @param _assetTo Asset to be exchanged to.
    */
-  function trade(uint8 _slippage, address _assetFrom, uint256 _assetFromAmount, address _assetTo) external override {
+  function trade(uint8 _slippage, address _assetFrom, uint256 _assetFromAmount, address _assetTo) external override returns(uint256) {
     //  TODO:
     // dexAddress.swap(_assetFrom, _assetFromAmount, _assetTo, slippage, etc);
     // _assetFrom.transfer(msg.sender, _assetFrom.balance(this));

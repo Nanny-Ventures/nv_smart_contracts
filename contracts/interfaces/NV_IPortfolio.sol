@@ -4,11 +4,12 @@ pragma solidity 0.8.6;
 interface NV_IPortfolio {
   /**
    * @dev Sells all owned assets.
+   * @param _delete Whether delete portfolio or not.
    * @param _assetTo Asset address to buy.
    * @param _router Router address.
    * @param _slippage Slippage value.
    */
-  function sellAllAssets(uint8 _slippage, address _assetTo, address _router) external;
+  function sellAllAssets(bool _delete, uint8 _slippage, address _assetTo, address _router) external;
 
   /**
    * @dev Withdraws balance.

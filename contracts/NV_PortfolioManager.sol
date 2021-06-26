@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 
 
 contract NV_PortfolioManager is Ownable, Pausable {
-  address internal portfolioFactory;
+  address public portfolioFactory;
 
   address[] public stablesAllowed;
   address[] public activePortfolios;
@@ -16,7 +16,7 @@ contract NV_PortfolioManager is Ownable, Pausable {
 
   mapping(address => bool) public isStableAllowed;
   mapping(address => uint256) private indexOfActivePortfolio;
-  mapping(address => address[]) public portfoliosOfInvestor;  //  all created portfolios currently owning
+  mapping(address => address[]) public portfoliosOfInvestor;  //  all created portfolios currently owned
   mapping(address => address) public investorOfPortfolio;
   mapping(address => bool) public isInvestorForbidden;
 
@@ -25,6 +25,10 @@ contract NV_PortfolioManager is Ownable, Pausable {
   event PortfolioDeleted(address portfolio, address investor);
   event PortfolioTransferred(address from, address to);
 
+
+  function getStablesAllowed() external view returns (address[] memory) {
+    return stablesAllowed;
+  }
 
   /**
    * @notice removed stablecoin balance in portfolio will be locked.
@@ -39,9 +43,12 @@ contract NV_PortfolioManager is Ownable, Pausable {
     if (_allowed) {
       stablesAllowed.push(_stable);
     } else {
-      for (uint8 i = 0; i < stablesAllowed.length; i++) {
+      uint8 count = uint8(stablesAllowed.length);
+      for (uint8 i = 0; i < count; i++) {
         if (stablesAllowed[i] == _stable) {
-          stablesAllowed[i] = stablesAllowed[stablesAllowed.length - 1];
+          if (i < (count - 1)) {
+            stablesAllowed[i] = stablesAllowed[count - 1];
+          }
           stablesAllowed.pop();
         }
       }
@@ -60,49 +67,27 @@ contract NV_PortfolioManager is Ownable, Pausable {
   }
 
   /**
-   * @notice (0, 0) - entire array. 
-   * @dev Gets all active portfolios.
+   * @notice (0, 0) - entire list. 
+   * @dev Gets all active or inactive portfolios.
+   * @param _active whether active or inactive portfolios.
    * @param _startIdx Index to start with.
    * @param _endIdx Index to end on.
-   * @return All active portfolios.
+   * @return All active or inactive portfolios.
    */
-  function getActivePortfolios(uint256 _startIdx, uint256 _endIdx) external view returns(address[] memory) {
+  function getPortfolios(bool _active, uint256 _startIdx, uint256 _endIdx) external view returns(address[] memory) {
+    address[] storage portfolios = _active ? activePortfolios : inactivePortfolios;
+
     if (_startIdx == 0 && _endIdx == 0) {
-      return activePortfolios;
+      return portfolios;
     }
 
     require(_startIdx <= _endIdx, "Wrong idxs");
-    require(_endIdx < activePortfolios.length);
+    require(_endIdx < portfolios.length);
 
     address[] memory portfoliosLocal = new address[](_endIdx - _startIdx);
     uint256 loop;
     for (uint256 i = _startIdx; i <= _endIdx; i ++) {
-      portfoliosLocal[loop] = activePortfolios[i];
-      loop++;
-    }
-
-    return portfoliosLocal;
-  }
-
-  /**
-   * @notice (0, 0) - entire array.
-   * @dev Gets all inactive portfolios.
-   * @param _startIdx Index to start with.
-   * @param _endIdx Index to end on.
-   * @return All inactive portfolios.
-   */
-  function getInactivePortfolios(uint256 _startIdx, uint256 _endIdx) external view returns(address[] memory) {
-    if (_startIdx == 0 && _endIdx == 0) {
-      return inactivePortfolios;
-    }
-
-    require(_startIdx <= _endIdx, "Wrong idxs");
-    require(_endIdx < inactivePortfolios.length);
-
-    address[] memory portfoliosLocal = new address[](_endIdx - _startIdx);
-    uint256 loop;
-    for (uint256 i = _startIdx; i <= _endIdx; i ++) {
-      portfoliosLocal[loop] = inactivePortfolios[i];
+      portfoliosLocal[loop] = portfolios[i];
       loop++;
     }
 
@@ -142,21 +127,21 @@ contract NV_PortfolioManager is Ownable, Pausable {
    * @param _to Transfer to address.
    */
   function transferPortfolio(address _portfolio, address _to) external whenNotPaused {
-    uint256 idx = indexOfActivePortfolio[_portfolio];
-    require(activePortfolios[idx] == _portfolio, "Wrong portfolio");
+    require(activePortfolios[indexOfActivePortfolio[_portfolio]] == _portfolio, "Wrong portfolio");
     require(investorOfPortfolio[_portfolio] == msg.sender, "Not investor");
     require(!isInvestorForbidden[_to], "Investor forbidden");
 
     portfoliosOfInvestor[_to].push(_portfolio);
     investorOfPortfolio[_portfolio] = _to;
 
-    uint256 portfoliosAmount = portfoliosOfInvestor[msg.sender].length;
+    address[] storage portfolios = portfoliosOfInvestor[msg.sender];
+    uint256 portfoliosAmount = portfolios.length;
     for (uint256 i = 0; i < portfoliosAmount; i++) {
-      if (portfoliosOfInvestor[msg.sender][i] == _portfolio) {
+      if (portfolios[i] == _portfolio) {
         if (i < (portfoliosAmount - 1)) {
-          portfoliosOfInvestor[msg.sender][i] = portfoliosOfInvestor[msg.sender][portfoliosAmount - 1];
+          portfolios[i] = portfolios[portfoliosAmount - 1];
         }
-        portfoliosOfInvestor[msg.sender].pop();
+        portfolios.pop();
       }
     }
 
@@ -175,7 +160,7 @@ contract NV_PortfolioManager is Ownable, Pausable {
     require(activePortfolios[idxToDelete] == _portfolio, "Wrong portfolio");
     require(investorOfPortfolio[_portfolio] == msg.sender, "Not investor");
 
-    NV_IPortfolio(_portfolio).sellAllAssets(_slippage, _assetTo, _router);
+    NV_IPortfolio(_portfolio).sellAllAssets(true, _slippage, _assetTo, _router);
 
     uint8 stablesAllowedLength = uint8(stablesAllowed.length);
     for (uint8 i = 0; i < stablesAllowedLength; i++) {
