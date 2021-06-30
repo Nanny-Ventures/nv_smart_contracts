@@ -3,6 +3,15 @@ pragma solidity 0.8.6;
 
 interface NV_IPortfolio {
   /**
+   * @dev Converts stables.
+   * @param _slippage Slippage value.
+   * @param _assetFrom Asset address to sell.
+   * @param _assetTo Asset address to buy.
+   * @param _router Router address.
+   */
+  function convertStables(uint8 _slippage, address _assetFrom, address _assetTo, address _router) external;
+
+  /**
    * @dev Sells all owned assets.
    * @param _delete Whether delete portfolio or not.
    * @param _assetTo Asset address to buy.

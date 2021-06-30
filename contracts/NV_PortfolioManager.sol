@@ -179,4 +179,25 @@ contract NV_PortfolioManager is Ownable, Pausable {
 
     emit PortfolioDeleted(_portfolio, msg.sender);
   }
+
+  /**
+   * @dev Withdraws balance.
+   * @param _percentageToWithdraw Percentage of balance to withdraw.
+   * @param _assetTo Asset (stable coin) to be used for balance withdrawal.
+   * @param _addressTo Receiver address. msg.sender will used if 0x0.
+   */
+  function withdrawBalance(uint8 _percentageToWithdraw, address _portfolio, address _assetTo, address _addressTo) external {
+    uint256 idxToDelete = indexOfActivePortfolio[_portfolio];
+    require(activePortfolios[idxToDelete] == _portfolio, "Wrong portfolio");
+    require(investorOfPortfolio[_portfolio] == msg.sender, "Not investor");
+
+    for (uint256 i = 0; i < stablesAllowed.length; i++) {
+      if (stablesAllowed[i] != _assetTo) {
+        if (IERC20(stablesAllowed[i]).balanceOf(address(this)) > 0) {
+
+        }
+      }
+    }
+
+  }
 }

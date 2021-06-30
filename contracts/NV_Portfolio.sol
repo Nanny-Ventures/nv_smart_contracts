@@ -52,7 +52,7 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _assetTo Asset address to buy.
    * @param _router Router address.
    */
-  function convertStables(uint8 _slippage, address _assetFrom, address _assetTo, address _router) external {
+  function convertStables(uint8 _slippage, address _assetFrom, address _assetTo, address _router) external override {
     require(NV_Admin(admin).isTrader(msg.sender), "Not trader");
     uint256 _assetFromBalance = IERC20(_assetFrom).balanceOf(address(this));
 
@@ -155,11 +155,10 @@ contract NV_Portfolio is NV_IPortfolio {
    */
   function requestForWithdrawal(address _assetTo) external {
     require(NV_Admin(admin).isStableAllowed(_assetTo), "Wrong stable");
-
-    uint256 requestDuration = NV_Admin(admin).requestDuration();
-    
     require(!NV_Admin(admin).paused(), "On pause");
     require(NV_Admin(admin).investorOfPortfolio(address(this)) == msg.sender, "Not investor");
+
+    uint256 requestDuration = NV_Admin(admin).requestDuration();
     require((withdrawalRequestedAt + requestDuration * 5) > block.timestamp, "Not yet");
 
     withdrawalRequestedAt = block.timestamp;
@@ -173,19 +172,12 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _addressTo Receiver address. msg.sender will used if 0x0.
    */
   function withdrawBalance(uint8 _percentageToWithdraw, address _assetTo, address _addressTo) external override {
+    require(msg.sender == admin, "Not admin");
+    require(!NV_Admin(admin).paused(), "On pause");
     require(_percentageToWithdraw > 0, "Wrong percentage");
     require(NV_Admin(admin).isStableAllowed(_assetTo), "Wrong stable");
     require(_addressTo != address(0), "Wrong addressTo");
-    require(NV_Admin(admin).investorOfPortfolio(address(this)) == msg.sender, "Not investor");
-    require(!NV_Admin(admin).paused(), "On pause");
     require(assetsOwned.length == 0, "Present assetsOwned");    //  there must be no assetsOwned. Trader must sell all assetsOwned.
-
-    address[] memory stablesAllowed = NV_Admin(admin).getStablesAllowed();
-    for (uint256 i = 0; i < stablesAllowed.length; i++) {
-      if (stablesAllowed[i] != _assetTo) {
-        require(IERC20(stablesAllowed[i]).balanceOf(address(this)) == 0, "Multiple stable bal");  //  there must be single stable with balance. Trader must convert other stables into single.
-      }
-    }
 
     uint256 balance = IERC20(_assetTo).balanceOf(address(this));
     require(balance > 0, "No balance");
@@ -195,8 +187,8 @@ contract NV_Portfolio is NV_IPortfolio {
     uint256 profit;
     
     if (stableToAmount > stableFromAmount) {
-      feePercentage = NV_Admin(admin).successFeePercentage();
       profit = stableToAmount - stableFromAmount;
+      feePercentage = NV_Admin(admin).successFeePercentage();
     }
     
     if ((block.timestamp < withdrawalRequestedAt + requestDuration) || (block.timestamp > withdrawalRequestedAt + (requestDuration * 2))) {
