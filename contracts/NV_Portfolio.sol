@@ -14,7 +14,7 @@ contract NV_Portfolio is NV_IPortfolio {
   uint256 public stableFromAmount;  //  all stables are equal, so single amount used
   uint256 public stableToAmount;  //  all stables are equal, so single amount used
 
-  uint256 public tradingFees; //  fee spent for trading that should be used while investor withdraws. Transfers & resets on each withdrawal.
+  uint256 public tradingFees; //  fee spent for trading by NV that should be used while investor withdraws. Transfers & resets on each withdrawal.
   uint256 public withdrawalRequestedAt;
   address public withdrawalRequestedToAsset;
 
@@ -23,6 +23,12 @@ contract NV_Portfolio is NV_IPortfolio {
 
   event Trade(address indexed _assetFrom, uint256 _assetFromAmount, address indexed _assetTo, address indexed _routerUniAddr);
 
+  modifier updateTradingFees() {
+    uint256 gasAmount = gasleft();
+    _;
+    gasAmount -= gasleft();
+    tradingFees += (gasAmount * tx.gasprice);
+  }
 
   /**
    * @dev Constructor.
@@ -53,7 +59,7 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _assetTo Asset address to buy.
    * @param _router Router address.
    */
-  function convertStables(uint8 _slippage, address _assetFrom, address _assetTo, address _router) external {
+  function convertStables(uint8 _slippage, address _assetFrom, address _assetTo, address _router) external updateTradingFees {
     require(NV_Admin(admin).isTrader(msg.sender), "Not trader");
     _convertStables(_slippage, _assetFrom, _assetTo, _router);
   }
@@ -74,9 +80,6 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _slippage Slippage value.
    */
   function _tradeAmount(bool _delete, bool _isInvestor, uint8 _slippage, address _assetFrom, uint256 _assetFromAmount, address _assetTo, address _router) private {
-    uint256 gasAmount = gasleft();
-
-    require((msg.sender == admin) || (NV_Admin(admin).isTrader(msg.sender)) || _isInvestor, "Wrong caller");
     require(_assetFromAmount > 0, "Wrong _assetFromAmount");
     require(_assetTo != address(0), "Wrong _assetTo");
     require(_router != address(0), "Wrong _router");
@@ -109,12 +112,7 @@ contract NV_Portfolio is NV_IPortfolio {
     if (_delete) {
       require(msg.sender == admin, "Not admin");
     } else {
-      if (!_isInvestor) {
-        require(NV_Admin(admin).isTrader(msg.sender), "Not trader");
-        
-        gasAmount -= gasleft();
-        tradingFees += (gasAmount * tx.gasprice);
-      }
+      require((NV_Admin(admin).isTrader(msg.sender)) || _isInvestor, "Wrong caller");
     }
   }
 
@@ -126,7 +124,7 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _router Router address.
    * @param _slippage Slippage value.
    */
-  function tradeAmount(uint8 _slippage, address _assetFrom, uint256 _assetFromAmount, address _assetTo, address _router) public {
+  function tradeAmount(uint8 _slippage, address _assetFrom, uint256 _assetFromAmount, address _assetTo, address _router) public updateTradingFees {
     _tradeAmount(false, false, _slippage, _assetFrom, _assetFromAmount, _assetTo, _router);
   }
 
@@ -138,7 +136,7 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _assetTo Asset address to buy.
    * @param _router Router address.
    */
-  function tradePercentage(uint8 _slippage, uint8 _assetFromPercentage, address _assetFrom, address _assetTo, address _router) external {
+  function tradePercentage(uint8 _slippage, uint8 _assetFromPercentage, address _assetFrom, address _assetTo, address _router) external updateTradingFees {
     uint256 _assetFromBalance = IERC20(_assetFrom).balanceOf(address(this));
     require(_assetFromBalance > 0, "Wrong _assetFromBalance");
 
@@ -152,7 +150,7 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _assetTo Asset address to buy.
    * @param _router Router address.
    */
-  function sellAllAssets(bool _delete, uint8 _slippage, address _assetTo, address _router) external override {
+  function sellAllAssets(bool _delete, uint8 _slippage, address _assetTo, address _router) external override updateTradingFees {
     _sellAllAssets(_delete, false, _slippage, _assetTo, _router);
   }
 
