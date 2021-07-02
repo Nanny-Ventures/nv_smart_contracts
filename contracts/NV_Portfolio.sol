@@ -205,14 +205,7 @@ contract NV_Portfolio is NV_IPortfolio {
     require((msg.sender == NV_Admin(admin).investorOfPortfolio(address(this))) || (msg.sender == admin), "Wrong caller");
 
     bool isInvestorCalling = (msg.sender == NV_Admin(admin).investorOfPortfolio(address(this)));
-    uint8 feePercentage;
-    uint256 profit;
-
-    //  duplicated. Used here to get success fee if NV traded with profit before investor _sellAllAssets.
-    if (stableToAmount > stableFromAmount) {
-      feePercentage = NV_Admin(admin).successFeePercentage();
-      profit = stableToAmount - stableFromAmount;
-    }
+    uint256 profit = (stableToAmount > stableFromAmount) ? stableToAmount - stableFromAmount : 0; //  duplicated. Used here to get success fee if NV traded with profit before investor _sellAllAssets.
     
     if (assetsOwned.length > 0) {
       _sellAllAssets(false, isInvestorCalling, _slippage, _assetTo, _router);
@@ -220,17 +213,11 @@ contract NV_Portfolio is NV_IPortfolio {
 
     //  duplicated. Used here to get success fee if comulated amount of investor NV traded + _sellAllAssets are in profit. Investor may withdraw urgently when 100x, but NV is HODLing.
     if (stableToAmount > stableFromAmount) {
-      feePercentage = NV_Admin(admin).successFeePercentage();
       profit = stableToAmount - stableFromAmount;
     } else {
       //  TODO: what to do here? If we sold with profit, but now investor sells with higher loss?
       //  delete feePercentage;
       //  delete profit;
-    }
-
-    uint256 requestDuration = NV_Admin(admin).requestDuration();
-    if ((block.timestamp < withdrawalRequestedAt + requestDuration) || (block.timestamp > withdrawalRequestedAt + (requestDuration * 2))) {
-      feePercentage += NV_Admin(admin).urgentFeePercentage();
     }
 
     address[] memory stablesAllowed = NV_Admin(admin).getStablesAllowed();
@@ -247,25 +234,26 @@ contract NV_Portfolio is NV_IPortfolio {
     require(balance > 0, "No balance");
 
     uint256 feeAmount;
-    if (feePercentage > 0) {
-      if (profit > 0) {
-        feeAmount = ((profit * feePercentage) / 100) + tradingFees;
-      } else {
-        feeAmount = ((balance * feePercentage) / 100) + tradingFees;
-      }
-
-      if (feeAmount > 0) {
-        require(IERC20(_assetTo).transfer(NV_Admin(admin).devFeeDistributionManager(), feeAmount), "Transfer to dev failed");
-      }
+    if (profit > 0) {
+      feeAmount = ((profit * NV_Admin(admin).successFeePercentage()) / 100) + tradingFees;
     }
+
+    uint256 requestDuration = NV_Admin(admin).requestDuration();
+    if ((block.timestamp < withdrawalRequestedAt + requestDuration) || (block.timestamp > withdrawalRequestedAt + (requestDuration * 2))) {
+      feeAmount += ((balance * NV_Admin(admin).urgentFeePercentage()) / 100) + tradingFees;
+    }
+
+    if (feeAmount > 0) {
+      require(IERC20(_assetTo).transfer(NV_Admin(admin).devFeeDistributionManager(), feeAmount), "Transfer to dev failed");
+    }
+
+    balance = ((balance - feeAmount) * _percentageToWithdraw) / 100;
+    require(IERC20(_assetTo).transfer(_addressTo, balance), "Transfer to investor failed");
 
     delete tradingFees;
     delete stableFromAmount;
     delete stableToAmount;
     delete withdrawalRequestedToAsset;
-
-    balance = ((balance - feeAmount) * _percentageToWithdraw) / 100;
-    require(IERC20(_assetTo).transfer(_addressTo, balance), "Transfer to investor failed");
   }
 
 
