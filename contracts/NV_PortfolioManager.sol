@@ -164,7 +164,7 @@ contract NV_PortfolioManager is Ownable, Pausable {
 
     uint8 stablesAllowedLength = uint8(stablesAllowed.length);
     for (uint8 i = 0; i < stablesAllowedLength; i++) {
-      NV_IPortfolio(_portfolio).withdrawBalance(100, stablesAllowed[i], _addressTo);
+      NV_IPortfolio(_portfolio).withdrawBalance(_slippage, 100, stablesAllowed[i], _addressTo, _router);
     }
 
     inactivePortfolios.push(_portfolio);
