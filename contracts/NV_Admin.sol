@@ -6,7 +6,7 @@ import "./NV_PortfolioManager.sol";
 
 
 contract NV_Admin is NV_FeeManager, NV_PortfolioManager {
-  address public devFeeDistributionManager;
+  address payable public devFeeDistributionManager;
 
   mapping(address => bool) public isTrader;
 
@@ -17,7 +17,7 @@ contract NV_Admin is NV_FeeManager, NV_PortfolioManager {
    * @dev Constructor.
    * @param _devFeeDistributionManager _devFeeDistributionManager Smart Contract address.
    */
-  constructor(address _devFeeDistributionManager) {
+  constructor(address payable _devFeeDistributionManager) {
     devFeeDistributionManager = _devFeeDistributionManager;
   }
 
@@ -35,7 +35,7 @@ contract NV_Admin is NV_FeeManager, NV_PortfolioManager {
    * @dev Updates devFeeDistributionManager.
    * @param _addr Address to be set.
    */
-  function updateDevFeeDistributionManager(address _addr) external onlyOwner {
+  function updateDevFeeDistributionManager(address payable _addr) external onlyOwner {
     require(_addr != address(0), "Wrong addr");
     devFeeDistributionManager = _addr;
   }
