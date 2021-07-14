@@ -14,7 +14,7 @@ contract NV_Portfolio is NV_IPortfolio {
   uint256 public stableFromAmount;  //  all stables are equal, so single amount used
   uint256 public stableToAmount;  //  all stables are equal, so single amount used
 
-  uint256 public tradingFees; //  fee spent for trading by NV that should be used while investor withdraws. Transfers & resets on each withdrawal.
+  uint256 public tradingFeesEth; //  fee (eth) spent by NV that should be returned when investor profitInStable withdraws.
   uint256 public withdrawalRequestedAt;
   address public withdrawalRequestedToAsset;
 
@@ -23,11 +23,11 @@ contract NV_Portfolio is NV_IPortfolio {
 
   event Trade(address indexed _assetFrom, uint256 _assetFromAmount, address indexed _assetTo, address indexed _routerUniAddr);
 
-  modifier updateTradingFees() {
+  modifier updateTradingFeesEth() {
     uint256 gasAmount = gasleft();
     _;
     gasAmount -= gasleft();
-    tradingFees += (gasAmount * tx.gasprice);
+    tradingFeesEth += (gasAmount * tx.gasprice);
   }
 
   /**
@@ -59,7 +59,7 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _assetTo Asset address to buy.
    * @param _router Router address.
    */
-  function convertStables(uint8 _slippage, address _assetFrom, address _assetTo, address _router) external updateTradingFees {
+  function convertStables(uint8 _slippage, address _assetFrom, address _assetTo, address _router) external updateTradingFeesEth {
     require(NV_Admin(admin).isTrader(msg.sender), "Not trader");
     _convertStables(_slippage, _assetFrom, _assetTo, _router);
   }
@@ -124,7 +124,7 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _router Router address.
    * @param _slippage Slippage value.
    */
-  function tradeAmount(uint8 _slippage, address _assetFrom, uint256 _assetFromAmount, address _assetTo, address _router) public updateTradingFees {
+  function tradeAmount(uint8 _slippage, address _assetFrom, uint256 _assetFromAmount, address _assetTo, address _router) public updateTradingFeesEth {
     _tradeAmount(false, false, _slippage, _assetFrom, _assetFromAmount, _assetTo, _router);
   }
 
@@ -136,7 +136,7 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _assetTo Asset address to buy.
    * @param _router Router address.
    */
-  function tradePercentage(uint8 _slippage, uint8 _assetFromPercentage, address _assetFrom, address _assetTo, address _router) external updateTradingFees {
+  function tradePercentage(uint8 _slippage, uint8 _assetFromPercentage, address _assetFrom, address _assetTo, address _router) external updateTradingFeesEth {
     uint256 _assetFromBalance = IERC20(_assetFrom).balanceOf(address(this));
     require(_assetFromBalance > 0, "Wrong _assetFromBalance");
 
@@ -150,7 +150,7 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _assetTo Asset address to buy.
    * @param _router Router address.
    */
-  function sellAllAssets(bool _delete, uint8 _slippage, address _assetTo, address _router) external override updateTradingFees {
+  function sellAllAssets(bool _delete, uint8 _slippage, address _assetTo, address _router) external override updateTradingFeesEth {
     _sellAllAssets(_delete, false, _slippage, _assetTo, _router);
   }
 
@@ -199,26 +199,17 @@ contract NV_Portfolio is NV_IPortfolio {
    * @param _router Router address.
    */
   function withdrawBalance(uint8 _slippage, uint8 _percentageToWithdraw, address _assetTo, address _addressTo, address _router) external override {
-    require(_assetTo == withdrawalRequestedToAsset, "Wrong _assetTo");
+    require(_assetTo == withdrawalRequestedToAsset, "Wrong _assetTo");  //  TODO: remove
     require(_addressTo != address(0), "Wrong addressTo");
     require(!NV_Admin(admin).paused(), "On pause");
     require((msg.sender == NV_Admin(admin).investorOfPortfolio(address(this))) || (msg.sender == admin), "Wrong caller");
-
-    bool isInvestorCalling = (msg.sender == NV_Admin(admin).investorOfPortfolio(address(this)));
-    uint256 profit = (stableToAmount > stableFromAmount) ? stableToAmount - stableFromAmount : 0; //  duplicated. Used here to get success fee if NV traded with profit before investor _sellAllAssets.
     
+    bool isInvestorCalling = (msg.sender == NV_Admin(admin).investorOfPortfolio(address(this)));
     if (assetsOwned.length > 0) {
       _sellAllAssets(false, isInvestorCalling, _slippage, _assetTo, _router);
     }
 
-    //  duplicated. Used here to get success fee if comulated amount of investor NV traded + _sellAllAssets are in profit. Investor may withdraw urgently when 100x, but NV is HODLing.
-    if (stableToAmount > stableFromAmount) {
-      profit = stableToAmount - stableFromAmount;
-    } else {
-      //  TODO: what to do here? If we sold with profit, but now investor sells with higher loss?
-      //  delete feePercentage;
-      //  delete profit;
-    }
+    uint256 profitInStable = (stableToAmount > stableFromAmount) ? stableToAmount - stableFromAmount : 0;
 
     address[] memory stablesAllowed = NV_Admin(admin).getStablesAllowed();
     for (uint256 i = 0; i < stablesAllowed.length; i++) {
@@ -234,13 +225,13 @@ contract NV_Portfolio is NV_IPortfolio {
     require(balance > 0, "No balance");
 
     uint256 feeAmount;
-    if (profit > 0) {
-      feeAmount = ((profit * NV_Admin(admin).successFeePercentage()) / 100) + tradingFees;
+    if (profitInStable > 0) {
+      feeAmount = ((profitInStable * NV_Admin(admin).successFeePercentage()) / 100);
     }
 
     uint256 requestDuration = NV_Admin(admin).requestDuration();
     if ((block.timestamp < withdrawalRequestedAt + requestDuration) || (block.timestamp > withdrawalRequestedAt + (requestDuration * 2))) {
-      feeAmount += ((balance * NV_Admin(admin).urgentFeePercentage()) / 100) + tradingFees;
+      feeAmount += ((balance * NV_Admin(admin).urgentFeePercentage()) / 100);
     }
 
     if (feeAmount > 0) {
@@ -250,7 +241,9 @@ contract NV_Portfolio is NV_IPortfolio {
     balance = ((balance - feeAmount) * _percentageToWithdraw) / 100;
     require(IERC20(_assetTo).transfer(_addressTo, balance), "Transfer to investor failed");
 
-    delete tradingFees;
+    NV_Admin(admin).devFeeDistributionManager().transfer(tradingFeesEth);
+
+    delete tradingFeesEth;
     delete stableFromAmount;
     delete stableToAmount;
     delete withdrawalRequestedToAsset;
